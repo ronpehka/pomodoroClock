@@ -15,26 +15,19 @@ const App = () => {
     const changeTime = (amount, type) => {
         if (type === 'break') {
             setBreakTime(prev => {
+                const newTime = prev + amount;
                 // Prevent the break time from going below 1 minute or above 60 minutes
-                if (prev + amount < 60 || prev + amount > 3600) {
-                    return prev;
-                }
-                return prev + amount;
+                return newTime > 0 && newTime <= 3600 ? newTime : prev;
             });
-        } else if (type === 'session') {
+        } else {
             setSessionTime(prev => {
+                const newTime = prev + amount;
                 // Prevent the session time from going below 1 minute or above 60 minutes
-                if (prev + amount < 60 || prev + amount > 3600) {
-                    return prev;
+                if (newTime > 0 && newTime <= 3600) {
+                    if (!timerOn) setDisplayTime(newTime);
+                    return newTime;
                 }
-                return prev + amount;
-            });
-            setDisplayTime(prev => {
-                // Ensure the display time is adjusted if session time changes
-                if (prev + amount < 60 || prev + amount > 3600) {
-                    return prev;
-                }
-                return prev + amount;
+                return prev;
             });
         }
     }
@@ -59,32 +52,17 @@ const App = () => {
     }
 
     const controlTime = () => {
-        const second = 1000;
-        let nextDate = new Date().getTime() + second;
-    
         if (!timerOn) {
             const interval = setInterval(() => {
-                const date = new Date().getTime();
-                if (date >= nextDate) {
-                    setDisplayTime(prev => {
-                        if (prev <= 0) {
-                            playBreakSound();
-                            if (!onBreak) {
-                                // Switch to break
-                                setOnBreak(true);
-                                return breakTime;
-                            } else {
-                                // Switch to session
-                                setOnBreak(false);
-                                return sessionTime;
-                            }
-                        }
-                        return prev - 1;
-                    });
-                    nextDate += second;
-                }
+                setDisplayTime(prev => {
+                    if (prev === 0) {
+                        playBreakSound();
+                        setOnBreak(prevBreak => !prevBreak);
+                        return !onBreak ? breakTime : sessionTime;
+                    }
+                    return prev - 1;
+                });
             }, 1000);
-    
             setTimerOn(true);
             setIntervalId(interval);
         } else {
@@ -92,19 +70,10 @@ const App = () => {
             setTimerOn(false);
         }
     };
-    
+
     React.useEffect(() => {
-        if (intervalId !== null) {
-            localStorage.setItem('interval-id', intervalId);
-        } else {
-            localStorage.removeItem('interval-id');
-        }
-        return () => clearInterval(intervalId); // Cleanup interval on component unmount
+        return () => clearInterval(intervalId);
     }, [intervalId]);
-    
-    React.useEffect(() => {
-        document.getElementById("timer-label").textContent = onBreak ? "Break" : "Session";
-    }, [onBreak]);
 
     return (
         <div className="center-align">
